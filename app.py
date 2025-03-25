@@ -1,5 +1,6 @@
 import streamlit as st
 import requests
+import anime
 
 st.set_page_config(
 
@@ -24,48 +25,54 @@ headers = {
     'X-MAL-CLIENT-ID': api_key
 }
 
-# API URL to search for anime by name
-search_url = f'https://api.myanimelist.net/v2/anime?q={anime_name}&limit=1'  # Searching for the first result
-    
-# Send GET request to the API
-response = requests.get(search_url, headers=headers)
-    
-if response.status_code == 200:
-    data = response.json()
-        
-    if data.get('data'):
-        # Extract the anime's ID from the search result
-        anime_id = data['data'][0]['node']['id']
+# Initialize session state for clearing the search if not already set
+if "anime_name" not in st.session_state:
+    st.session_state.anime_name = ""
+    st.session_state.score = None
+    st.session_state.aniScore = None
+    st.session_state.kitsuScore = None
+    st.session_state.pic = None
 
-        url = f'https://api.myanimelist.net/v2/anime/{anime_id}?fields=mean'
-        response = requests.get(url, headers=headers)
+st.title('Anime Score Checker')
 
-        if response.status_code == 200:
-            data = response.json()
-            title = data.get('title', None)
-            score = data.get('mean', None)
-            pic = data.get('main_picture', None)
-            pic = pic.get('large', None)
+# Take anime name as input with a unique key
+anime_name = st.text_input("Enter the name of an anime:", value=st.session_state.anime_name, key="anime_name_input")
 
-        
-        else:
-            print(f"Error: {response.status_code}")
-            
-        if score is None:
-            print(f"Anime: {title}, Score: No score available")
-    else:
-        print("No anime found with that name.")
-else:
-    print(f"Error: {response.status_code}")
+# Button to clear the current search
+if st.button("Clear Search"):
+    st.session_state.anime_name = ""
+    st.session_state.score = None
+    st.session_state.aniScore = None
+    st.session_state.kitsuScore = None
+    st.session_state.pic = None
+    st.rerun()  # This will refresh the page
 
+# Only show the columns after anime_name is entered
+if anime_name:
+    # Gathers data of the anime
+    animeData = anime.get_anime_info(anime_name, headers=headers)
+    title = animeData.get('title')
+    score = animeData.get('score')
+    pic = animeData.get('picture')
+    aniScore = anime.get_anime_score_anilist(title)
+    kitsuScore = anime.get_anime_score_kitsu(title)
 
-# Create two columns
-col1, col2 = st.columns(2)
+    # Store the fetched data in session state
+    st.session_state.anime_name = anime_name
+    st.session_state.score = score
+    st.session_state.aniScore = aniScore
+    st.session_state.kitsuScore = kitsuScore
+    st.session_state.pic = pic
 
-# Place content inside the columns
-with col1:
-    st.header(title)
-    st.write("Mal Score: ", score)
+    # Create two columns
+    col1, col2 = st.columns(2)
 
-with col2:
-    st.image(pic, use_container_width=True)
+    # Place content inside the columns
+    with col1:
+        st.header(title)
+        st.write("Mal Score: ", st.session_state.score)
+        st.write("AniList Score: ", st.session_state.aniScore)
+        st.write("Kitsu Score: ", st.session_state.kitsuScore)
+
+    with col2:
+        st.image(st.session_state.pic, use_container_width=True)
