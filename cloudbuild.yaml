@@ -1,0 +1,17 @@
+steps:
+  - name: "gcr.io/cloud-builders/gcloud"
+    entrypoint: "bash"
+    args:
+      - "-c"
+      - |
+        if [ "$BRANCH_NAME" = "main" ]; then
+          gcloud app deploy app.prod.yaml --quiet;
+        elif [ "$BRANCH_NAME" = "dev" ]; then
+          gcloud app deploy app.dev.yaml --quiet;
+        else
+          echo "Branch not configured for deployment";
+        fi
+substitutions:
+  _BRANCH_NAME: "${BRANCH_NAME}"
+options:
+  logging: CLOUD_LOGGING_ONLY
